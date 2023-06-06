@@ -16,6 +16,7 @@ import urllib.request
 from enum import Enum
 from typing import Any, Dict, Optional, Union, cast
 from urllib.error import HTTPError
+import datetime
 
 import boto3
 
@@ -31,6 +32,7 @@ class AwsService(Enum):
 
     cloudwatch = "cloudwatch"
     guardduty = "guardduty"
+    securityhub = "securityhub"
 
 
 def decrypt_url(encrypted_url: str) -> str:
@@ -192,6 +194,122 @@ def format_guardduty_finding(message: Dict[str, Any], region: str) -> Dict[str, 
     }
 
 
+class SecurityHubFindingSeverity(Enum):
+    """Maps GuardDuty finding severity to Slack message format color"""
+
+    Low = "#777777"
+    Medium = "warning"
+    High = "danger"
+    Critical = "#ff0209"
+    Informational = "#007cbc"
+
+
+def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[str, Any]:
+    """
+    Format Security Hub finding event into Slack message format
+
+    :params message: SNS message body containing Security Hub finding event
+    :params region: AWS region where the event originated from
+    :returns: formatted Slack message payload
+    """
+
+    attachment = []
+
+    securityhub_url = get_service_url(region=region, service="securityhub")
+    detail = message["detail"]
+
+    for finding in detail["findings"]:
+        try:
+            if finding["WorkflowState"] != "NEW":
+                continue
+        except Exception:
+            logging.exception("The WorkflowState was not found in the JSON.")
+
+        findingDescription = finding["Description"]
+        firstSeen = finding["FirstObservedAt"]
+        findingTime = finding["UpdatedAt"]
+
+        findingTimeEpoch = round(
+            datetime.datetime.strptime(
+                finding["UpdatedAt"], "%Y-%m-%dT%H:%M:%S.%fZ"
+            ).timestamp()
+        )
+
+        findingFirstSeenTimeEpoch = round(
+            datetime.datetime.strptime(firstSeen, "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+        )
+
+        region = ", ".join(set([res["Region"] for res in finding["Resources"]]))
+        messageId = ", ".join(set([res["Id"] for res in finding["Resources"]]))
+        resourceType = ", ".join(set([res["Type"] for res in finding["Resources"]]))
+
+        firstSeen = (
+            f"<!date^{findingFirstSeenTimeEpoch}^{{date}} at {{time}} | {firstSeen}>"
+        )
+        lastSeen = f"<!date^{findingTimeEpoch}^{{date}} at {{time}} | {findingTime}>"
+
+        severity_score = finding["Severity"]["Normalized"]
+
+        if 1 <= severity_score and severity_score <= 39:
+            severity = "Low"
+        elif 40 <= severity_score and severity_score <= 69:
+            severity = "Medium"
+        elif 70 <= severity_score and severity_score <= 89:
+            severity = "High"
+        elif 90 <= severity_score and severity_score <= 100:
+            severity = "Critical"
+        else:
+            severity = "Informational"
+
+        attachment.append(
+            {
+                "color": SecurityHubFindingSeverity[severity].value,
+                "fallback": f"Security Hub Finding: {finding['Title']}",
+                "fields": [
+                    {
+                        "title": "Description",
+                        "value": f"`{findingDescription}`",
+                        "short": False,
+                    },
+                    {
+                        "title": "Finding Type",
+                        "value": f"`{finding['Types']}`",
+                        "short": False,
+                    },
+                    {
+                        "title": "First Seen",
+                        "value": f"`{firstSeen}`",
+                        "short": True,
+                    },
+                    {
+                        "title": "Last Seen",
+                        "value": f"`{lastSeen}`",
+                        "short": True,
+                    },
+                    {"title": "Severity", "value": f"`{severity}`", "short": True},
+                    {
+                        "title": "Account ID",
+                        "value": f"`{finding['AwsAccountId']}`",
+                        "short": True,
+                    },
+                    {
+                        "title": "Resource Type",
+                        "value": f"`{resourceType}`",
+                        "short": True,
+                    },
+                    {
+                        "title": "Link to Finding",
+                        "value": f"{securityhub_url}#/findings?search=id%3D{messageId}",
+                        "short": False,
+                    },
+                ],
+                "text": f"AWS Security Hub Finding - {finding['Title']}",
+            }
+        )
+
+    return attachment
+
+
 class AwsHealthCategory(Enum):
     """Maps AWS Health eventTypeCategory to Slack message format color
 
@@ -342,6 +460,15 @@ def get_slack_message_payload(
 
     elif isinstance(message, Dict) and message.get("detail-type") == "AWS Health Event":
         notification = format_aws_health(message=message, region=message["region"])
+        attachment = notification
+
+    elif (
+        isinstance(message, Dict)
+        and message.get("detail-type") == "Security Hub Findings - Imported"
+    ):
+        notification = format_security_hub_finding(
+            message=message, region=message["region"]
+        )
         attachment = notification
 
     elif "attachments" in message or "text" in message:
