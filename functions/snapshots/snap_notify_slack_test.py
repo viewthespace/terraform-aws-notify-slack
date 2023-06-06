@@ -232,6 +232,16 @@ snapshots[
 ]
 
 snapshots[
+    "test_event_get_slack_message_payload_snapshots event_securityhub_finding_low.json"
+] = [
+    {
+        "channel": "slack_testing_sandbox",
+        "icon_emoji": ":aws:",
+        "username": "notify_slack_test",
+    }
+]
+
+snapshots[
     "test_sns_get_slack_message_payload_snapshots message_cloudwatch_alarm.json"
 ] = [
     {
