@@ -15,7 +15,7 @@ import os
 import urllib.parse
 import urllib.request
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, Optional, Union, cast
 from urllib.error import HTTPError
 
 import boto3
@@ -246,22 +246,7 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
         region = ", ".join(set([res["Region"] for res in finding["Resources"]]))
         resourceType = ", ".join(set([res["Type"] for res in finding["Resources"]]))
 
-        searchUrl = ""
-
-        messageId = finding.get("Id", "")
-        if messageId == "":
-            generatorId = finding.get("GeneratorId", "")
-            if generatorId != "":
-                searchUrl = urllib.parse.quote(f"GeneratorId={generatorId}")
-        else:
-            searchUrl = urllib.parse.quote(
-                f"AwsAccountId={finding['AwsAccountId']}&Id={messageId}"
-            )
-        if searchUrl == "":
-            messageId = ", ".join(set([res["Id"] for res in finding["Resources"]]))
-            searchUrl = urllib.parse.quote(
-                f"AwsAccountId={finding['AwsAccountId']}&Id={messageId}"
-            )
+        searchUrl = security_hub_search_url(finding)
 
         firstSeen = (
             f"<!date^{findingFirstSeenTimeEpoch}^{{date}} at {{time}} | {firstSeen}>"
@@ -326,6 +311,27 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
         }
 
     return {"": {}}
+
+
+def security_hub_search_url(finding):
+    searchUrl = ""
+
+    messageId = finding.get("Id", "")
+    if messageId == "":
+        generatorId = finding.get("GeneratorId", "")
+        if generatorId != "":
+            searchUrl = urllib.parse.quote(f"GeneratorId={generatorId}")
+    else:
+        searchUrl = urllib.parse.quote(
+            f"AwsAccountId={finding['AwsAccountId']}&Id={messageId}"
+        )
+    if searchUrl == "":
+        messageId = ", ".join(set([res["Id"] for res in finding["Resources"]]))
+        searchUrl = urllib.parse.quote(
+            f"AwsAccountId={finding['AwsAccountId']}&Id={messageId}"
+        )
+
+    return searchUrl
 
 
 class AwsHealthCategory(Enum):
