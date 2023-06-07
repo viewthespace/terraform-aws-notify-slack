@@ -17,7 +17,6 @@ import urllib.request
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union, cast
 from urllib.error import HTTPError
-import datetime
 
 import boto3
 
@@ -205,13 +204,7 @@ class SecurityHubFindingSeverity(Enum):
     Informational = "#007cbc"
 
 
-<<<<<<< HEAD
-def format_security_hub_finding(
-    message: Dict[str, Any], region: str
-) -> List[Dict[str, Any]]:
-=======
 def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[str, Any]:
->>>>>>> 319e50eb36ad0b928e68b79179560c3a6bd37c48
     """
     Format Security Hub finding event into Slack message format
 
@@ -219,8 +212,6 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
     :params region: AWS region where the event originated from
     :returns: formatted Slack message payload
     """
-
-    attachment = []
 
     securityhub_url = get_service_url(region=region, service="securityhub")
     detail = message["detail"]
@@ -233,7 +224,6 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
             logging.exception("The WorkflowState was not found in the JSON.")
 
         findingDescription = finding["Description"]
-<<<<<<< HEAD
 
         try:
             firstSeen = finding["FirstObservedAt"]
@@ -252,20 +242,6 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
             logging.error(
                 f"Issue reading/formatting the dates from the JSON - {e}: result"
             )
-=======
-        firstSeen = finding["FirstObservedAt"]
-        findingTime = finding["UpdatedAt"]
-
-        findingTimeEpoch = round(
-            datetime.datetime.strptime(
-                finding["UpdatedAt"], "%Y-%m-%dT%H:%M:%S.%fZ"
-            ).timestamp()
-        )
-
-        findingFirstSeenTimeEpoch = round(
-            datetime.datetime.strptime(firstSeen, "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
-        )
->>>>>>> 319e50eb36ad0b928e68b79179560c3a6bd37c48
 
         region = ", ".join(set([res["Region"] for res in finding["Resources"]]))
         messageId = ", ".join(set([res["Id"] for res in finding["Resources"]]))
@@ -289,53 +265,51 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
         else:
             severity = "Informational"
 
-        attachment.append(
-            {
-                "color": SecurityHubFindingSeverity[severity].value,
-                "fallback": f"Security Hub Finding: {finding['Title']}",
-                "fields": [
-                    {
-                        "title": "Description",
-                        "value": f"`{findingDescription}`",
-                        "short": False,
-                    },
-                    {
-                        "title": "Finding Type",
-                        "value": f"`{finding['Types']}`",
-                        "short": False,
-                    },
-                    {
-                        "title": "First Seen",
-                        "value": f"`{firstSeen}`",
-                        "short": True,
-                    },
-                    {
-                        "title": "Last Seen",
-                        "value": f"`{lastSeen}`",
-                        "short": True,
-                    },
-                    {"title": "Severity", "value": f"`{severity}`", "short": True},
-                    {
-                        "title": "Account ID",
-                        "value": f"`{finding['AwsAccountId']}`",
-                        "short": True,
-                    },
-                    {
-                        "title": "Resource Type",
-                        "value": f"`{resourceType}`",
-                        "short": True,
-                    },
-                    {
-                        "title": "Link to Finding",
-                        "value": f"{securityhub_url}#/findings?search=id%3D{messageId}",
-                        "short": False,
-                    },
-                ],
-                "text": f"AWS Security Hub Finding - {finding['Title']}",
-            }
-        )
+        return {
+            "color": SecurityHubFindingSeverity[severity].value,
+            "fallback": f"Security Hub Finding: {finding['Title']}",
+            "fields": [
+                {
+                    "title": "Description",
+                    "value": f"`{findingDescription}`",
+                    "short": False,
+                },
+                {
+                    "title": "Finding Type",
+                    "value": f"`{finding['Types']}`",
+                    "short": False,
+                },
+                {
+                    "title": "First Seen",
+                    "value": f"`{firstSeen}`",
+                    "short": True,
+                },
+                {
+                    "title": "Last Seen",
+                    "value": f"`{lastSeen}`",
+                    "short": True,
+                },
+                {"title": "Severity", "value": f"`{severity}`", "short": True},
+                {
+                    "title": "Account ID",
+                    "value": f"`{finding['AwsAccountId']}`",
+                    "short": True,
+                },
+                {
+                    "title": "Resource Type",
+                    "value": f"`{resourceType}`",
+                    "short": True,
+                },
+                {
+                    "title": "Link to Finding",
+                    "value": f"{securityhub_url}#/findings?search=id%3D{messageId}",
+                    "short": False,
+                },
+            ],
+            "text": f"AWS Security Hub Finding - {finding['Title']}",
+        }
 
-    return attachment
+    return message
 
 
 class AwsHealthCategory(Enum):
@@ -484,6 +458,7 @@ def get_slack_message_payload(
         notification = format_guardduty_finding(
             message=message, region=message["region"]
         )
+
         attachment = notification
 
     elif isinstance(message, Dict) and message.get("detail-type") == "AWS Health Event":
@@ -494,21 +469,10 @@ def get_slack_message_payload(
         isinstance(message, Dict)
         and message.get("detail-type") == "Security Hub Findings - Imported"
     ):
-<<<<<<< HEAD
-        security_hub_attachments = format_security_hub_finding(
-            message=message, region=message["region"]
-        )
-
-        if attachment:
-            payload["attachments"] = security_hub_attachments  # type: ignore
-
-        return payload
-=======
         notification = format_security_hub_finding(
             message=message, region=message["region"]
         )
         attachment = notification
->>>>>>> 319e50eb36ad0b928e68b79179560c3a6bd37c48
 
     elif "attachments" in message or "text" in message:
         payload = {**payload, **message}
