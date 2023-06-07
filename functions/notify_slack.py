@@ -246,13 +246,22 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
         region = ", ".join(set([res["Region"] for res in finding["Resources"]]))
         resourceType = ", ".join(set([res["Type"] for res in finding["Resources"]]))
 
+        searchUrl = ""
+
         messageId = finding.get("Id", "")
         if messageId == "":
+            generatorId = finding.get("GeneratorId", "")
+            if generatorId != "":
+                searchUrl = urllib.parse.quote(f"GeneratorId={generatorId}")
+        else:
+            searchUrl = urllib.parse.quote(
+                f"AwsAccountId={finding['AwsAccountId']}&Id={messageId}"
+            )
+        if searchUrl == "":
             messageId = ", ".join(set([res["Id"] for res in finding["Resources"]]))
-
-        searchUrl = urllib.parse.quote(
-            f"AwsAccountId={finding['AwsAccountId']}&Id={messageId}"
-        )
+            searchUrl = urllib.parse.quote(
+                f"AwsAccountId={finding['AwsAccountId']}&Id={messageId}"
+            )
 
         firstSeen = (
             f"<!date^{findingFirstSeenTimeEpoch}^{{date}} at {{time}} | {firstSeen}>"
