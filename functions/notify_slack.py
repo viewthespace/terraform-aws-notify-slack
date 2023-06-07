@@ -223,36 +223,39 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
         except Exception:
             logging.exception("The WorkflowState was not found in the JSON.")
 
-        findingDescription = finding["Description"]
-
         try:
-            firstSeen = finding["FirstObservedAt"]
-            findingTime = finding["UpdatedAt"]
-            findingTimeEpoch = round(
-                datetime.datetime.strptime(
-                    finding["UpdatedAt"], "%Y-%m-%dT%H:%M:%S.%fZ"
-                ).timestamp()
-            )
+            firstSeen = finding.get("FirstObservedAt", "<unknown>")
             findingFirstSeenTimeEpoch = round(
                 datetime.datetime.strptime(
                     firstSeen, "%Y-%m-%dT%H:%M:%S.%fZ"
                 ).timestamp()
             )
+            firstSeen = f"<!date^{findingFirstSeenTimeEpoch}^{{date}} at {{time}} | {firstSeen}>"
         except Exception as e:
+            firstSeen = "<unknown>"
             logging.error(
-                f"Issue reading/formatting the dates from the JSON - {e}: result"
+                f"Issue reading/formatting the findingFirstSeenTimeEpoch - {e}: result"
+            )
+        try:
+            findingTime = finding.get("UpdatedAt", "<unknown>")
+            findingTimeEpoch = round(
+                datetime.datetime.strptime(
+                    findingTime, "%Y-%m-%dT%H:%M:%S.%fZ"
+                ).timestamp()
+            )
+            lastSeen = (
+                f"<!date^{findingTimeEpoch}^{{date}} at {{time}} | {findingTime}>"
+            )
+        except Exception as e:
+            lastSeen = "<unknown>"
+            logging.error(
+                f"Issue reading/formatting the findingTimeEpoch - {e}: result"
             )
 
-        firstSeen = (
-            f"<!date^{findingFirstSeenTimeEpoch}^{{date}} at {{time}} | {firstSeen}>"
-        )
-        lastSeen = f"<!date^{findingTimeEpoch}^{{date}} at {{time}} | {findingTime}>"
-
+        findingDescription = finding["Description"]
         region = ", ".join(set([res["Region"] for res in finding["Resources"]]))
         resourceType = ", ".join(set([res["Type"] for res in finding["Resources"]]))
-
         searchUrl = security_hub_search_url(finding)
-
         severity_score = finding["Severity"]["Normalized"]
 
         if 1 <= severity_score and severity_score <= 39:
