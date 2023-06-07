@@ -250,6 +250,8 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
         if messageId == "":
             messageId = ", ".join(set([res["Id"] for res in finding["Resources"]]))
 
+        searchUrl = urllib.parse.quote(f"Id={messageId}")
+
         firstSeen = (
             f"<!date^{findingFirstSeenTimeEpoch}^{{date}} at {{time}} | {firstSeen}>"
         )
@@ -305,7 +307,7 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
                 },
                 {
                     "title": "Link to Finding",
-                    "value": f"{securityhub_url}#/findings?search=id%3D{messageId}",
+                    "value": f"{securityhub_url}#/findings?search={searchUrl}",
                     "short": False,
                 },
             ],
