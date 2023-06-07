@@ -244,8 +244,11 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
             )
 
         region = ", ".join(set([res["Region"] for res in finding["Resources"]]))
-        messageId = ", ".join(set([res["Id"] for res in finding["Resources"]]))
         resourceType = ", ".join(set([res["Type"] for res in finding["Resources"]]))
+
+        messageId = finding.get("Id", "")
+        if messageId == "":
+            messageId = ", ".join(set([res["Id"] for res in finding["Resources"]]))
 
         firstSeen = (
             f"<!date^{findingFirstSeenTimeEpoch}^{{date}} at {{time}} | {firstSeen}>"
@@ -309,7 +312,7 @@ def format_security_hub_finding(message: Dict[str, Any], region: str) -> Dict[st
             "text": f"AWS Security Hub Finding - {finding['Title']}",
         }
 
-    return message
+    return {"": {}}
 
 
 class AwsHealthCategory(Enum):

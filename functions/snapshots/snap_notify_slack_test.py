@@ -327,7 +327,7 @@ snapshots['test_event_get_slack_message_payload_snapshots event_securityhub_find
                     {
                         'short': False,
                         'title': 'Link to Finding',
-                        'value': 'https://console.aws.amazon.com/securityhub/home?region=us-west-2#/findings?search=id%3Darn:aws:s3:::test-bucket-12'
+                        'value': 'https://console.aws.amazon.com/securityhub/home?region=us-west-2#/findings?search=id%3Darn:aws:macie:us-west-2:123456789012:integtest/trigger/6214d71b927c41cbab015159a8f316a3/alert/f2893b211841467198cc1201e9031ee4'
                     }
                 ],
                 'text': 'AWS Security Hub Finding - Google Suite Two-Factor Backup Codes uploaded to S3'
